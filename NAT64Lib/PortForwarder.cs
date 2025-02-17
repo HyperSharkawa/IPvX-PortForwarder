@@ -11,6 +11,7 @@ public class PortForwarder : IDisposable
     private readonly int _tcpConnectHandleThreadCount;
     private readonly IPEndPoint _listenEndPoint;
     private readonly IPEndPoint _forwardEndPoint;
+    private readonly IPAddress _localBindAddress;
     private readonly TcpListener _listenTcpListener;
     private readonly UdpClient _listenUdpClient; // 用于监听UDP数据包
     private CancellationTokenSource? _cancellationTokenSource;
@@ -18,7 +19,7 @@ public class PortForwarder : IDisposable
     private readonly SemaphoreQueue<(UdpReceiveResult, IPEndPoint)> _sendUdpQueue = new();
     private readonly SemaphoreQueue<TcpClient> _tcpConnectQueue = new();
     private Task[] _worker = [];
-
+    private const int SioUdpConnreset = -1744830452; // SIO_UDP_CONNRESET的常量值
 
     private readonly ConcurrentDictionary<IPEndPoint, UdpSessionInfo> _udpSessionMapping = [];
 
@@ -30,10 +31,16 @@ public class PortForwarder : IDisposable
         this._udpSessionTimeout = TimeSpan.FromSeconds(config.UdpSessionTimeout);
         this._listenEndPoint = config.ListenEndPoint;
         this._forwardEndPoint = config.ForwardEndPoint;
+        this._localBindAddress = this._forwardEndPoint.AddressFamily switch
+        {
+            AddressFamily.InterNetwork => IPAddress.Any,
+            AddressFamily.InterNetworkV6 => IPAddress.IPv6Any,
+            _ => throw new NotSupportedException("不支持的地址族")
+        }
+        ;
         this._listenTcpListener = new TcpListener(this._listenEndPoint);
-        this._listenUdpClient = new UdpClient(config.ListenEndPoint.Port); // 绑定监听端口，但不连接到目标地址，因为需要接受和发送来自任意地址的UDP数据包
-        const int sioUdpConnreset = -1744830452; // SIO_UDP_CONNRESET的常量值
-        this._listenUdpClient.Client.IOControl(sioUdpConnreset, [0, 0, 0, 0], null); // 忽略UDP连接重置错误
+        this._listenUdpClient = new UdpClient(config.ListenEndPoint); // 绑定监听端口，但不连接到目标地址，因为需要接受和发送来自任意地址的UDP数据包
+        this._listenUdpClient.Client.IOControl(SioUdpConnreset, [0, 0, 0, 0], null); // 忽略UDP连接重置错误
     }
 
     ~PortForwarder() => this.Dispose();
@@ -230,18 +237,22 @@ public class PortForwarder : IDisposable
             while (!cancellationToken.IsCancellationRequested)
             {
                 UdpReceiveResult receiveResult = await this._receiveUdpQueue.DequeueAsync(cancellationToken);
+                //Console.WriteLine($"从监听端口接收到UDP数据包: {receiveResult.RemoteEndPoint}");
                 // 接收到客户端的UDP数据包后，查找是否已经存在与该客户端的会话
+                //EndPoint? sendEndPoint;
                 if (this._udpSessionMapping.TryGetValue(receiveResult.RemoteEndPoint, out UdpSessionInfo? udpClientInfo))
                 {
                     // 更新最后活跃时间，转发本次数据
                     udpClientInfo.LastActivateTime = DateTime.Now;
                     await udpClientInfo.UdpClient.SendAsync(receiveResult.Buffer, receiveResult.Buffer.Length);
+                    //sendEndPoint = udpClientInfo.UdpClient.Client.LocalEndPoint;
                 }
                 else
                 {
                     // 如果不存在与该客户端的会话，则创建一个新的会话。新建一个Udp客户端，并开启异步任务监听目标地址的响应，转发到客户端
                     // 创建一个新的 IPEndPoint，随机分配一个端口号
-                    UdpClient udpClient = new(new IPEndPoint(this._forwardEndPoint.Address, 0));
+                    UdpClient udpClient = new(new IPEndPoint(this._localBindAddress, 0));
+                    //udpClient.Client.IOControl(SioUdpConnreset, [0, 0, 0, 0], null); // 忽略UDP连接重置错误
                     udpClient.Connect(this._forwardEndPoint); // 连接到目标地址
                     UdpSessionInfo newUdpSessionInfo = new() // 创建一个新的UDP会话信息
                     {
@@ -253,9 +264,10 @@ public class PortForwarder : IDisposable
                     //newUdpSessionInfo.ForwardTask = ForwardUdp(newUdpSessionInfo, receiveResult.RemoteEndPoint, cancellationToken);
                     this._udpSessionMapping[receiveResult.RemoteEndPoint] = newUdpSessionInfo; // 添加到会话映射表
                     await udpClient.SendAsync(receiveResult.Buffer, receiveResult.Buffer.Length); // 转发本次数据
+                    //sendEndPoint = udpClient.Client.LocalEndPoint;
                     Console.WriteLine($"添加UDP客户端: {receiveResult.RemoteEndPoint} 当前有{this._udpSessionMapping.Count}个udp客户端");
                 }
-                //Console.WriteLine($"转发UDP: {receiveResult.RemoteEndPoint} => {this._forwardEndPoint}");
+                //Console.WriteLine($"转发UDP从监听侧到转发侧: {sendEndPoint} => {this._forwardEndPoint}");
             }
         }
         catch (OperationCanceledException)
@@ -276,8 +288,9 @@ public class PortForwarder : IDisposable
             while (!cancellationToken.IsCancellationRequested)
             {
                 (UdpReceiveResult sendResult, IPEndPoint clientEndPoint) = await this._sendUdpQueue.DequeueAsync(cancellationToken);
+                //Console.WriteLine($"从转发侧接收到UDP数据包: {sendResult.RemoteEndPoint}");
                 await this._listenUdpClient.SendAsync(sendResult.Buffer, sendResult.Buffer.Length, clientEndPoint);
-                //Console.WriteLine($"转发UDP: {this._forwardEndPoint} => {sendResult.RemoteEndPoint}");
+                //Console.WriteLine($"转发UDP从转发侧到监听侧: {this._listenUdpClient.Client.LocalEndPoint} => {sendResult.RemoteEndPoint}");
             }
         }
         catch (OperationCanceledException)

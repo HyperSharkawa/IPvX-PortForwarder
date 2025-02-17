@@ -14,6 +14,7 @@
 		<PackageId>IPvX-PortForwarder</PackageId>
 		<Description>IPvX-PortForwarder</Description>
 		<AssemblyName>IPvX-PortForwarder</AssemblyName>
+		<Version>0.2</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
