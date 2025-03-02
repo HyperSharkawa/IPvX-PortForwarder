@@ -15,9 +15,9 @@ public class PortForwarder : IDisposable
     private readonly TcpListener _listenTcpListener;
     private readonly UdpClient _listenUdpClient; // 用于监听UDP数据包
     private CancellationTokenSource? _cancellationTokenSource;
-    private readonly SemaphoreQueue<UdpReceiveResult> _receiveUdpQueue = new();
-    private readonly SemaphoreQueue<(UdpReceiveResult, IPEndPoint)> _sendUdpQueue = new();
-    private readonly SemaphoreQueue<TcpClient> _tcpConnectQueue = new();
+    private readonly ChannelBasedQueue<UdpReceiveResult> _receiveUdpQueue = new();
+    private readonly ChannelBasedQueue<(UdpReceiveResult, IPEndPoint)> _sendUdpQueue = new();
+    private readonly ChannelBasedQueue<TcpClient> _tcpConnectQueue = new();
     private Task[] _worker = [];
     private const int SioUdpConnreset = -1744830452; // SIO_UDP_CONNRESET的常量值
 

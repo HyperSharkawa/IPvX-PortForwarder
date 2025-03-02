@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace NAT64Lib;
+namespace ConsoleTest;
 internal class SemaphoreQueue<T>
 {
     private readonly ConcurrentQueue<T> _queue = [];
@@ -13,16 +13,23 @@ internal class SemaphoreQueue<T>
         _signal.Release();
     }
 
-    public async Task<T> DequeueAsync()
+    public async ValueTask<T> DequeueAsync()
     {
         await _signal.WaitAsync();
         T value = _queue.TryDequeue(out T? thing) ? thing : throw new Exception();
         return value;
     }
 
-    public async Task<T> DequeueAsync(CancellationToken cancellationToken)
+    public async ValueTask<T> DequeueAsync(CancellationToken cancellationToken)
     {
         await _signal.WaitAsync(cancellationToken);
+        T value = _queue.TryDequeue(out T? thing) ? thing : throw new Exception();
+        return value;
+    }
+
+    public T Dequeue()
+    {
+        _signal.Wait();
         T value = _queue.TryDequeue(out T? thing) ? thing : throw new Exception();
         return value;
     }

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NAT64Lib", "NAT64Lib\NAT64L
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NAT64Config", "NAT64Config\NAT64Config.csproj", "{B1504D4A-8338-48EF-BFA5-C7332EF0C690}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "ConsoleTest\ConsoleTest.csproj", "{219C85AD-6F8E-4DF7-B545-F9AE234A690B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +29,15 @@ Global
 		{B1504D4A-8338-48EF-BFA5-C7332EF0C690}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1504D4A-8338-48EF-BFA5-C7332EF0C690}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B1504D4A-8338-48EF-BFA5-C7332EF0C690}.Release|Any CPU.Build.0 = Release|Any CPU
+		{219C85AD-6F8E-4DF7-B545-F9AE234A690B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{219C85AD-6F8E-4DF7-B545-F9AE234A690B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{219C85AD-6F8E-4DF7-B545-F9AE234A690B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{219C85AD-6F8E-4DF7-B545-F9AE234A690B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B1DE1970-D4B7-4898-A0AA-C923CBA61CB9}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,13 @@
+{
+    "portForwardConfigs": [
+        {
+            "listenIpAddress": "127.0.0.1",
+            "listenPort": 12000,
+            "forwardIpAddress": "127.0.0.1",
+            "forwardPort": 11000,
+            "udpSessionTimeout": 120,
+            "tcpConnectHandleThreadCount": 2,
+            "udpClientCleanInterval": 60
+        }
+    ]
+}
