@@ -44,6 +44,9 @@ public class PortForwarder : IDisposable
     /// </summary>
     private static readonly ObjectPool<byte[]> UdpSocketBufferPool = new(() => new byte[MaxUdpBufferSize]);
     private static readonly ObjectPool<EndPoint> EndPointPool = new(() => new IPEndPoint(IPAddress.Any, 0));
+    private static readonly ObjectPool<EndPoint> EndPointPoolV6 = new(() => new IPEndPoint(IPAddress.IPv6Any, 0));
+    private readonly ObjectPool<EndPoint> _listenEndPointPool;
+    private readonly ObjectPool<EndPoint> _forwardEndPointPool;
     /// <summary>
     /// UDP会话映射表 用于存放客户端的会话信息 键为客户端的终结点 值为该客户的会话信息
     /// </summary>
@@ -62,8 +65,9 @@ public class PortForwarder : IDisposable
             AddressFamily.InterNetwork => IPAddress.Any,
             AddressFamily.InterNetworkV6 => IPAddress.IPv6Any,
             _ => throw new NotSupportedException("不支持的地址族")
-        }
-        ;
+        };
+        this._listenEndPointPool = this._listenEndPoint.AddressFamily == AddressFamily.InterNetworkV6 ? EndPointPoolV6 : EndPointPool;
+        this._forwardEndPointPool = this._forwardEndPoint.AddressFamily == AddressFamily.InterNetworkV6 ? EndPointPoolV6 : EndPointPool;
         this._listenTcpListener = new TcpListener(this._listenEndPoint);
         this._udpSocket = new Socket(this._listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp); // 创建UDP Socket对象
         this._udpSocket.Bind(this._listenEndPoint); // 绑定到监听地址
@@ -80,6 +84,7 @@ public class PortForwarder : IDisposable
         Console.WriteLine($"扩展对象池大小到{targetCount}");
         UdpSocketBufferPool.ExpandPool(targetCount);
         EndPointPool.ExpandPool(targetCount);
+        EndPointPoolV6.ExpandPool(targetCount);
     }
     public void Dispose()
     {
@@ -245,7 +250,7 @@ public class PortForwarder : IDisposable
             {
                 // 接收来自监听地址的客户端的UDP数据包 并加入到接收队列
                 byte[] buffer = UdpSocketBufferPool.Rent();
-                EndPoint remoteEndPoint = EndPointPool.Rent();
+                EndPoint remoteEndPoint = this._listenEndPointPool.Rent();
                 Memory<byte> memory = buffer;
                 SocketReceiveFromResult socketReceive = await this._udpSocket.ReceiveFromAsync(memory, remoteEndPoint, cancellationToken);
                 this._receiveUdpQueue.Enqueue((buffer, socketReceive.ReceivedBytes, socketReceive.RemoteEndPoint));
@@ -283,7 +288,7 @@ public class PortForwarder : IDisposable
                     // 更新最后活跃时间，转发本次数据
                     udpClientInfo.LastActivateTime = DateTime.Now;
                     udpClientInfo.UdpClientSocket.Send(buffer, length, SocketFlags.None); // 转发本次数据到目标地址
-                    EndPointPool.Return(endPoint);// 回收EndPoint对象
+                    this._listenEndPointPool.Return(endPoint);// 回收EndPoint对象
                     //Console.WriteLine("ReceiveUdpQueueHandler 回收了EndPoint对象");
                 }
                 else
@@ -333,7 +338,7 @@ public class PortForwarder : IDisposable
             while (!cancellationToken.IsCancellationRequested)
             {
                 byte[] buffer = UdpSocketBufferPool.Rent();
-                EndPoint remoteEndPoint = EndPointPool.Rent();
+                EndPoint remoteEndPoint = this._forwardEndPointPool.Rent();
                 Memory<byte> memory = buffer;
                 try
                 {
@@ -360,7 +365,7 @@ public class PortForwarder : IDisposable
         }
         finally
         {
-            EndPointPool.Return(clientEndPoint);// 当转发任务结束后回收EndPoint对象
+            this._listenEndPointPool.Return(clientEndPoint);// 当转发任务结束后回收EndPoint对象
             //Console.WriteLine("UDP转发任务结束 回收EndPoint对象");
             Console.WriteLine($"{udpSessionInfo.UdpClientSocket.LocalEndPoint} 的UDP转发任务结束");
         }
@@ -381,7 +386,7 @@ public class PortForwarder : IDisposable
                 (byte[] buffer, int length, EndPoint clientEndPoint) = await this._sendUdpQueue.DequeueAsync(cancellationToken);
                 this._udpSocket.SendTo(buffer, length, SocketFlags.None, clientEndPoint);
                 UdpSocketBufferPool.Return(buffer); // 回收缓冲区对象
-                EndPointPool.Return(clientEndPoint); // 回收EndPoint对象
+                this._forwardEndPointPool.Return(clientEndPoint); // 回收EndPoint对象
                 //Console.WriteLine("转发了响应UDP数据包 回收了Buffer和EndPoint对象");
             }
         }
