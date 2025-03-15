@@ -9,6 +9,7 @@ IPvX-PortForwarder 是一个支持 IPv4 和 IPv6 的端口转发工具，可在�
 ## 配置文件格式
 ```json
 {
+  "objectPoolInitialCount": 对象池大小,
   "portForwardConfigs": [
     {
       "listenIpAddress": "监听的 IP 地址",
@@ -25,6 +26,7 @@ IPvX-PortForwarder 是一个支持 IPv4 和 IPv6 的端口转发工具，可在�
 ```
 
 ## 配置项说明
+- **LbjectPoolInitialCount**：UDP转发缓冲区和终结点的对象池初始大小，默认值为10。即使不对该值进行设定，当不够用时也会自动扩充。
 - **ListenIpAddress**：本地监听的 IP 地址，可使用 IPv4 或 IPv6，例如 "127.0.0.1" 或 "[::1]"。IPv6地址应使用`[]`括起来。
 - **ListenPort**：本地监听的端口号。
 - **ForwardIpAddress**：转发到的目标 IP 地址。可使用 IPv4 或 IPv6。
@@ -36,6 +38,7 @@ IPvX-PortForwarder 是一个支持 IPv4 和 IPv6 的端口转发工具，可在�
 ## 示例配置
 ```json
 {
+  "objectPoolInitialCount": 100,
   "portForwardConfigs": [
     {
       "listenIpAddress": "127.0.0.1",
