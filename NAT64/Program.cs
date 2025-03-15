@@ -39,8 +39,8 @@ internal class Program
             Console.WriteLine("github.com已被转发到本地IPv6回环地址，请访问：https://[::1]/");
         }
         string configText = File.ReadAllText("config.json");
-        Config configJson = JsonSerializer.Deserialize(configText, Nat64JsonContext.Default.Config) ??
-            throw new Exception("配置文件解析失败");
+        Config configJson = JsonSerializer.Deserialize(configText, Nat64JsonContext.Default.Config) ?? throw new Exception("配置文件解析失败");
+        PortForwarder.ExpandObjectPool(configJson.ObjectPoolInitialCount);
         try
         {
             PortForwarder.Config[] configs = [.. configJson.PortForwardConfigs.Select(config => config.AsPortForwarderConfig())];
@@ -79,8 +79,6 @@ internal static class Extensions
             TcpConnectHandleThreadCount = config.TcpConnectHandleThreadCount,
             UdpClientCleanInterval = config.UdpClientCleanInterval
         };
-
-
     }
 }
 

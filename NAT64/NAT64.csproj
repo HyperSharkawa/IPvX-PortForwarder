@@ -14,7 +14,7 @@
 		<PackageId>IPvX-PortForwarder</PackageId>
 		<Description>IPvX-PortForwarder</Description>
 		<AssemblyName>IPvX-PortForwarder</AssemblyName>
-		<Version>0.2</Version>
+		<Version>0.3</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -24,7 +24,7 @@
 
 	<ItemGroup>
 	  <None Update="config.json">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
 	</ItemGroup>
 
